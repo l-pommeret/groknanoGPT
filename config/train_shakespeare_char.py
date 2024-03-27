@@ -4,7 +4,9 @@
 out_dir = "out-shakespeare-char"
 eval_interval = 500  # keep frequent because we'll overfit
 eval_iters = 100
-log_interval = 100  # don't print too too often
+# I'm not sure what's going on, but when log_interval == 100, the time per iter is inaccurate and much longer than it should be
+# when running on multiple GPUs. TODO: investigate
+log_interval = 50  # don't print too too often
 
 # we expect to overfit on this small dataset, so only save when val improves
 always_save_checkpoint = True
