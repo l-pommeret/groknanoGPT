@@ -14,7 +14,7 @@ In lichess_hf_dataset, you can modify this line:
 
 To the dataset of your choice located here: https://huggingface.co/datasets/adamkarvonen/chess_games/tree/main
 
-To sample on Mac, uncomment line 21 in sample.py. To train on Mac, rename `train_shakespeare_char_mac.py` to `train_shakespeare_char.py`.
+To sample on Mac, uncomment line 21 in sample.py. To train on Macbooks or low powered machines like laptops, rename `train_shakespeare_char_mac.py` to `train_shakespeare_char.py`.
 
 This nanoGPT repo is almost identical to the original nanoGPT repo. I made some logging changes, stored my training data in int8 instead of int16 due to a smaller vocab size, and modified get_batch(). My hugging face datasets are collections of length 1024 blocks. Every block begins with ";", my delimiter token. For example, ";1.e4 e5 2.Nf3 ...". I modified get_batch() to ensure that the beginning of every one of the inputs the model sees is the beginning of one of my blocks.
 
