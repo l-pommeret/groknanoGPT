@@ -22,6 +22,9 @@ After running `prepare.py`, you can also run `get_batch.ipynb` to ensure that ev
 
 Wandb loss curves and model configs can be viewed here: https://api.wandb.ai/links/adam-karvonen/u783xspb
 
+The 25M parameter model took 72 hours to train on one RTX 3090 GPU. The 50M parameter
+model took 38 hours to train on four RTX 3090 GPUs. By lowering batch size and increasing gradient accumulation steps, you can easily train using less than 8GB of VRAM.
+
 # nanoGPT
 
 ![nanoGPT](assets/nanogpt.jpg)
