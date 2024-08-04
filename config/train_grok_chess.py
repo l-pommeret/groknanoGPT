@@ -7,9 +7,9 @@ log_interval = 50  # don't print too too often
 
 always_save_checkpoint = True
 
-wandb_log = False
-wandb_project = "chess-gpt-batch"
-wandb_run_name = "4layer_lichess"
+wandb_log = True
+wandb_project = "grokchess"
+wandb_run_name = "4layer_150masters"
 
 dataset = "lichess_hf_dataset"
 gradient_accumulation_steps = 1
