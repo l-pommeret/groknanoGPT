@@ -9,7 +9,7 @@ always_save_checkpoint = True
 
 wandb_log = False
 wandb_project = "chess-gpt-batch"
-wandb_run_name = "8layer_lichess"
+wandb_run_name = "4layer_lichess"
 
 dataset = "lichess_hf_dataset"
 gradient_accumulation_steps = 1
@@ -17,7 +17,7 @@ batch_size = 100
 block_size = 1023  # context of up to 1023 tokens (because dataset block size is 1024)
 
 # baby GPT model :)
-n_layer = 8
+n_layer = 4
 n_head = 1
 n_embd = 512
 dropout = 0.0
