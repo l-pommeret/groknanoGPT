@@ -9,7 +9,7 @@ always_save_checkpoint = True
 
 wandb_log = True
 wandb_project = "grokchess"
-wandb_run_name = "4layer_150masters"
+wandb_run_name = "4layer_150masters_10decay"
 
 dataset = "lichess_hf_dataset"
 gradient_accumulation_steps = 1
@@ -31,4 +31,4 @@ beta2 = 0.95  # make a bit bigger because number of tokens per iter is small
 warmup_iters = 2000  # not super necessary potentially
 compile = True
 
-weight_decay = 5
+weight_decay = 10
