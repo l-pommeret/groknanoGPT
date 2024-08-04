@@ -22,7 +22,7 @@ n_head = 1
 n_embd = 512
 dropout = 0.0
 
-learning_rate = 3e-4
+learning_rate = 0.00001
 max_iters = 600000
 lr_decay_iters = max_iters  # make equal to max_iters usually
 min_lr = 3e-5  # learning_rate / 10 usually
@@ -31,4 +31,4 @@ beta2 = 0.95  # make a bit bigger because number of tokens per iter is small
 warmup_iters = 2000  # not super necessary potentially
 compile = True
 
-weight_decay = 1
+weight_decay = 5
