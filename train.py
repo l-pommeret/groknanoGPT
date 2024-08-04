@@ -245,6 +245,9 @@ if wandb_log and master_process:
     import wandb
     wandb.init(project=wandb_project, name=wandb_run_name, config=config)
 
+list_train_loss = []
+list_val_loss = []
+
 # training loop
 X, Y = get_batch('train') # fetch the very first batch
 t0 = time.time()
@@ -261,7 +264,9 @@ while True:
     # evaluate the loss on train/val sets and write checkpoints
     if iter_num % eval_interval == 0 and master_process:
         losses = estimate_loss()
-        print(f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+        print(f"step {iter_num}: train loss {losses['train']:.10f}, val loss {losses['val']:.10f}")
+        list_train_loss.append(losses['train'])
+        list_val_loss.apprend(losses['val'])
         if wandb_log:
             wandb.log({
                 "iter": iter_num,
