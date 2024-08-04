@@ -266,7 +266,7 @@ while True:
         losses = estimate_loss()
         print(f"step {iter_num}: train loss {losses['train']:.10f}, val loss {losses['val']:.10f}")
         list_train_loss.append(losses['train'])
-        list_val_loss.apprend(losses['val'])
+        list_val_loss.append(losses['val'])
         if wandb_log:
             wandb.log({
                 "iter": iter_num,
