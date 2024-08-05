@@ -9,11 +9,11 @@ always_save_checkpoint = True
 
 wandb_log = True
 wandb_project = "grokchess"
-wandb_run_name = "4layer_150masters_1decay"
+wandb_run_name = "4layer_150masters_0.01decay_grokfast"
 
 dataset = "lichess_hf_dataset"
 gradient_accumulation_steps = 1
-batch_size = 32
+batch_size = 256
 block_size = 1023  # context of up to 1023 tokens (because dataset block size is 1024)
 
 # baby GPT model :)
@@ -31,4 +31,4 @@ beta2 = 0.95  # make a bit bigger because number of tokens per iter is small
 warmup_iters = 2000  # not super necessary potentially
 compile = True
 
-weight_decay = 1
+weight_decay = 0.01
