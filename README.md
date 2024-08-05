@@ -1,3 +1,20 @@
+Huggingface repo : https://huggingface.co/Zual
+
+I use this code to train various neural networks to test their abilities (availables on my huggingface repo) :
+
+* 4 models trained on chess games, respectively noised with 0%, 5%, 50% and 80% (dataset on my huggingface repo)
+* Several models with differents weight decay, and with the grokfast algorithm (https://arxiv.org/pdf/2405.20233), trained on 150 master chess games like the protagonist in the Zweig's novel.
+
+# QUICKSTART for FastGrok
+
+```
+pip install torch numpy transformers datasets tiktoken wandb tqdm
+wandb login xxxx # xxxx = auth token, find it at wandb.ai/authorize Otherwise, send wandb_logging to False
+python data/lichess_hf_dataset/prepare.py
+python trainfast.py config/train_grok_chess.py
+python sample.py --out_dir=out-shakespeare-char
+```
+
 # QUICKSTART
 
 ```
