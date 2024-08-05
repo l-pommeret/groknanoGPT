@@ -28,7 +28,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
 from collections import deque
-from typing import Dict, Optional
+from typing import Dict, Optional, Literal
 
 from modelfast import GPTConfig, GPT
 
@@ -80,6 +80,45 @@ config_keys = [k for k,v in globals().items() if not k.startswith('_') and isins
 exec(open('configurator.py').read()) # overrides from command line or config file
 config = {k: globals()[k] for k in config_keys} # will be useful for logging
 # -----------------------------------------------------------------------------
+
+def gradfilter_ma(
+    m: nn.Module,
+    grads: Optional[Dict[str, deque]] = None,
+    window_size: int = 100,
+    lamb: float = 5.0,
+    filter_type: Literal['mean', 'sum'] = 'mean',
+    warmup: bool = True,
+    trigger: bool = False, # For ablation study.
+) -> Dict[str, deque]:
+    if grads is None:
+        grads = {n: deque(maxlen=window_size) for n, p in m.named_parameters() if p.requires_grad and p.grad is not None}
+    for n, p in m.named_parameters():
+        if p.requires_grad and p.grad is not None:
+            grads[n].append(p.grad.data.detach()) # .cpu())
+            # Modify the gradients.
+            if not warmup or len(grads[n]) == window_size and not trigger:
+                if filter_type == "mean":
+                    avg = sum(grads[n]) / len(grads[n])
+                elif filter_type == "sum":
+                    avg = sum(grads[n])
+                else:
+                    raise ValueError(f"Unrecognized filter_type {filter_type}")
+                p.grad.data = p.grad.data + avg * lamb
+    return grads
+
+def gradfilter_ema(
+    m: nn.Module,
+    grads: Optional[Dict[str, torch.Tensor]] = None,
+    alpha: float = 0.98,
+    lamb: float = 2.0,
+) -> Dict[str, torch.Tensor]:
+    if grads is None:
+        grads = {n: p.grad.data.detach() for n, p in m.named_parameters() if p.requires_grad and p.grad is not None}
+    for n, p in m.named_parameters():
+        if p.requires_grad and p.grad is not None:
+            grads[n] = grads[n] * alpha + p.grad.data.detach() * (1 - alpha)
+            p.grad.data = p.grad.data + grads[n] * lamb
+    return grads
 
 # various inits, derived attributes, I/O setup
 ddp = int(os.environ.get('RANK', -1)) != -1 # is this a ddp run?
