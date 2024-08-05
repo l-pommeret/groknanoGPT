@@ -1,110 +1,115 @@
-# saves the openwebtext dataset to a binary file for training. following was helpful:
-# https://github.com/HazyResearch/flash-attention/blob/main/training/src/datamodules/language_modeling_hf.py
-
 import os
-from tqdm import tqdm
 import numpy as np
-import tiktoken
-from datasets import load_dataset  # huggingface datasets
+import pandas as pd
+from tqdm import tqdm
 import pickle
+from datasets import load_dataset
+from huggingface_hub import HfApi, HfFolder
+import requests
+import chardet
 
-# number of workers in .map() call
-# good number to use is ~order number of cpu cores // 2
-num_proc = 8
-dtype = np.uint8  # Currently there are only 32 tokens in the chess LLMs vocab
+# Dictionnaire de conversion fourni
+meta = {
+    'stoi': {' ': 0, '#': 1, '+': 2, '-': 3, '.': 4, '0': 5, '1': 6, '2': 7, '3': 8, '4': 9, '5': 10, '6': 11, '7': 12, '8': 13, '9': 14, ';': 15, '=': 16, 'B': 17, 'K': 18, 'N': 19, 'O': 20, 'Q': 21, 'R': 22, 'a': 23, 'b': 24, 'c': 25, 'd': 26, 'e': 27, 'f': 28, 'g': 29, 'h': 30, 'x': 31},
+    'itos': {0: ' ', 1: '#', 2: '+', 3: '-', 4: '.', 5: '0', 6: '1', 7: '2', 8: '3', 9: '4', 10: '5', 11: '6', 12: '7', 13: '8', 14: '9', 15: ';', 16: '=', 17: 'B', 18: 'K', 19: 'N', 20: 'O', 21: 'Q', 22: 'R', 23: 'a', 24: 'b', 25: 'c', 26: 'd', 27: 'e', 28: 'f', 29: 'g', 30: 'h', 31: 'x'}
+}
+dtype = np.uint8  # 32 tokens seulement dans le vocabulaire des LLMs pour les échecs
 
-# number of workers in load_dataset() call
-# best number might be different from num_proc above as it also depends on NW speed.
-# it is better than 1 usually though
-num_proc_load_dataset = num_proc
+# Authentification auprès de Hugging Face
+hf_token = "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"
+HfFolder.save_token(hf_token)
+api = HfApi()
 
-if __name__ == "__main__":
-    # dataset = load_dataset("csv", data_files={"train": "pgn.csv"}) # For local testing
+# Téléchargement du fichier CSV depuis Hugging Face
+dataset_path = "Zual/chessGPT"
+file_path = "maitres.csv"
+local_file_path = "maitres.csv"
 
-    dataset_path = "adamkarvonen/chess_games"
-    file_path = "lichess_6gb_blocks.zip"
-    # file_path = "smaller_pgn_file_blocks.zip"
+if not os.path.exists(local_file_path):
+    url = f"https://huggingface.co/datasets/{dataset_path}/resolve/main/{file_path}"
+    response = requests.get(url)
+    with open(local_file_path, 'wb') as f:
+        f.write(response.content)
+    print(f"Fichier '{local_file_path}' téléchargé.")
 
-    # Load the dataset
-    dataset = load_dataset(dataset_path, data_files=file_path)
+# Détection de l'encodage du fichier
+with open(local_file_path, 'rb') as file:
+    raw_data = file.read()
+    result = chardet.detect(raw_data)
+    detected_encoding = result['encoding']
 
-    # by default only contains the 'train' split, so create a test split
-    split_dataset = dataset["train"].train_test_split(
-        test_size=0.01, seed=2357, shuffle=True
-    )
-    split_dataset["val"] = split_dataset.pop("test")  # rename the test split to val
+print(f"Encodage détecté : {detected_encoding}")
 
-    # this results in:
-    # >>> split_dataset
-    # DatasetDict({
-    #     train: Dataset({
-    #         features: ['text'],
-    #         num_rows: 8009762
-    #     })
-    #     val: Dataset({
-    #         features: ['text'],
-    #         num_rows: 4007
-    #     })
-    # })
+# Chargement du dataset à partir du fichier CSV téléchargé
+encodings_to_try = [detected_encoding, 'utf-8', 'latin-1', 'iso-8859-1', 'cp1252']
 
-    # we now want to tokenize the dataset. Using meta.pkl in the same directory as this file
-    meta_path = os.path.join(os.path.dirname(__file__), "meta.pkl")
-    with open(meta_path, "rb") as f:
-        meta = pickle.load(f)
+for encoding in encodings_to_try:
+    try:
+        data = pd.read_csv(local_file_path, encoding=encoding)
+        print(f"Lecture réussie avec l'encodage : {encoding}")
+        break
+    except UnicodeDecodeError:
+        print(f"Échec de lecture avec l'encodage : {encoding}")
+else:
+    raise ValueError("Impossible de lire le fichier avec les encodages essayés.")
 
-    stoi = meta["stoi"]
-    itos = meta["itos"]
+data = data.drop(0)  # Supprimer la première ligne contenant "transcript"
 
-    # to read the bin files later, e.g. with numpy:
-    # m = np.memmap('train.bin', dtype=np.uint8, mode='r')
-    # print(split_dataset["val"][0])
-    # print(len(split_dataset["val"]["transcript"][0]))
+def process_line(line, meta, vector_size=1024):
+    vector = np.zeros(vector_size, dtype=dtype)
+    for i, char in enumerate(line.strip()):
+        if i >= vector_size:
+            break
+        vector[i] = meta['stoi'].get(char, 0)  # Utiliser 0 si le caractère n'est pas trouvé
+    return vector
 
-    # For verifying that all games are 1024 tokens long
-    # for game in split_dataset["train"]["transcript"]:
-    #     if len(game) != 1024:
-    #         print(len(game))
-    #         print(game)
-    #         break
-    # print(stoi)
+# Traitement des données
+batches = []
+for _, row in tqdm(data.iterrows(), total=len(data), desc="Traitement des lignes"):
+    text = row['transcript']
+    batch = process_line(text, meta)
+    batches.append(batch)
 
-    column_name = "transcript"
+batches = np.array(batches)
 
-    def process(example):
-        ids = np.array([stoi[c] for c in example[column_name]], dtype=dtype)
-        out = {"ids": ids, "len": len(ids)}
-        return out
+# Sauvegarde des ensembles dans des fichiers binaires
+train_ratio = 0.5  # 50% des données pour l'entraînement pour voir le grok
+split_index = int(len(batches) * train_ratio)
+train_batches = batches[:split_index]
+val_batches = batches[split_index:]
 
-    # tokenize the dataset
-    tokenized = split_dataset.map(
-        process,
-        remove_columns=[column_name],
-        desc="tokenizing the splits",
-        num_proc=num_proc,
-    )
+train_batches.tofile("train.bin")
+val_batches.tofile("val.bin")
 
-    # print(tokenized["val"]["ids"])
+print(f"Ensemble d'entraînement sauvegardé dans 'train.bin'")
+print(f"Ensemble de validation sauvegardé dans 'val.bin'")
 
-    # concatenate all the ids in each dataset into one large file we can use for training
-    for split, dset in tokenized.items():
-        arr_len = np.sum(dset["len"], dtype=np.uint64)
-        print(f"{split} has {arr_len} tokens")
-        filename = os.path.join(os.path.dirname(__file__), f"{split}.bin")
-        arr = np.memmap(filename, dtype=dtype, mode="w+", shape=(arr_len,))
-        print(arr.shape)
-        total_batches = 1024
+# Affichage des 50 premières lignes du CSV pour vérification
+print("50 premières lignes du CSV:")
+print(data.head(50))
 
-        idx = 0
-        for batch_idx in tqdm(range(total_batches), desc=f"writing {filename}"):
-            # Batch together samples for faster write
-            batch = dset.shard(
-                num_shards=total_batches, index=batch_idx, contiguous=True
-            ).with_format("numpy")
-            # print(batch[0])
-            arr_batch = np.concatenate(batch["ids"])
-            # print(arr_batch)
-            # print(arr_batch.shape)
-            # Write into mmap
-            arr[idx : idx + len(arr_batch)] = arr_batch
-            idx += len(arr_batch)
-        arr.flush()
+# Informations sur les ensembles de données
+print(f"\nNombre total d'exemples : {len(batches)}")
+print(f"Nombre d'exemples d'entraînement : {len(train_batches)}")
+print(f"Nombre d'exemples de validation : {len(val_batches)}")
+
+def load_and_print_batches(filename, start_batch=0, end_batch=50, batch_size=1024):
+    # Charger le fichier binaire
+    data = np.fromfile(filename, dtype=np.uint8)
+
+    # Calculer le nombre total de batches
+    total_batches = len(data) // batch_size
+
+    # Limiter l'intervalle de batches à afficher si nécessaire
+    start_batch = max(0, start_batch)
+    end_batch = min(end_batch, total_batches)
+
+    # Afficher les batches dans l'intervalle spécifié
+    for i in range(start_batch, end_batch):
+        batch_start = i * batch_size
+        batch_end = batch_start + batch_size
+        batch = data[batch_start:batch_end]
+        print(f"Batch {i+1}: {batch}")
+
+# Exemple d'utilisation : afficher les batches de 10 à 20
+load_and_print_batches("train.bin", start_batch=1, end_batch=10)
