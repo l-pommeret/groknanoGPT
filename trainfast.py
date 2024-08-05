@@ -24,6 +24,7 @@ from contextlib import nullcontext
 
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
