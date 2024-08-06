@@ -13,13 +13,13 @@ wandb_run_name = "2layer_150games_0.01decay_grokfast"
 
 dataset = "tic_tac_toe"
 gradient_accumulation_steps = 1
-batch_size = 200
+batch_size = 512
 block_size = 26  # context of up to 1023 tokens (because dataset block size is 1024)
 
 # baby GPT model :)
 n_layer = 2
 n_head = 2
-n_embd = 512
+n_embd = 128
 dropout = 0.0
 
 learning_rate = 0.00001
