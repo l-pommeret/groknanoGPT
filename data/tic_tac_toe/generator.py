@@ -30,18 +30,28 @@ def verifier_victoire(grille, joueur):
     ]
     return any(all(grille[i] == joueur for i in combo) for combo in combinaisons_gagnantes)
 
-def generer_parties(nombre_parties, nom_fichier):
+def generer_parties_uniques(nombre_parties, nom_fichier):
+    parties_uniques = set()
+    tentatives_max = nombre_parties * 10  # Pour éviter une boucle infinie
+    tentatives = 0
+
     with open(nom_fichier, 'w', newline='') as fichier_csv:
         writer = csv.writer(fichier_csv)
         writer.writerow(["transcript"])  # En-tête de la colonne
         
-        for _ in range(nombre_parties):
+        while len(parties_uniques) < nombre_parties and tentatives < tentatives_max:
             partie = generer_sequence()
-            writer.writerow([partie])
+            if partie not in parties_uniques:
+                parties_uniques.add(partie)
+                writer.writerow([partie])
+            tentatives += 1
     
-    print(f"{nombre_parties} parties ont été générées et sauvegardées dans {nom_fichier}")
+    parties_generees = len(parties_uniques)
+    print(f"{parties_generees} parties uniques ont été générées et sauvegardées dans {nom_fichier}")
+    if parties_generees < nombre_parties:
+        print(f"Attention : Seulement {parties_generees} parties uniques ont pu être générées sur les {nombre_parties} demandées.")
 
 # Utilisation du script
-nombre_parties = 100  # Vous pouvez changer ce nombre
-nom_fichier = "parties_tic_tac_toe.csv"
-generer_parties(nombre_parties, nom_fichier)
+nombre_parties = 26830  # Vous pouvez changer ce nombre
+nom_fichier = "26830_tictactoe.csv"
+generer_parties_uniques(nombre_parties, nom_fichier)
